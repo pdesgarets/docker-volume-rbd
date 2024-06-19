@@ -1,13 +1,12 @@
 package dockerVolumeRbd
 
 import (
-	"github.com/sirupsen/logrus"
-	"github.com/docker/go-plugins-helpers/volume"
-	"strconv"
 	"fmt"
+	"github.com/docker/go-plugins-helpers/volume"
+	"github.com/sirupsen/logrus"
 	"os"
+	"strconv"
 )
-
 
 func (d *rbdDriver) Create(r *volume.CreateRequest) error {
 	logrus.Infof("volume-rbd Name=%s Request=Create", r.Name)
@@ -15,11 +14,16 @@ func (d *rbdDriver) Create(r *volume.CreateRequest) error {
 	d.Lock()
 	defer d.Unlock()
 
-    var err error
 	var fstype string = os.Getenv("VOLUME_FSTYPE")
 	var mkfsOptions string = os.Getenv("VOLUME_MKFS_OPTIONS")
-	var size  uint64 = os.Getenv("VOLUME_SIZE")
-	var order os.Getenv("VOLUME_ORDER")
+	size, err := strconv.ParseUint(os.Getenv("VOLUME_SIZE"), 10, 64)
+	if err != nil {
+		return fmt.Errorf("unable to parse VOLUME_SIZE int: %s", err)
+	}
+	order, err := strconv.Atoi(os.Getenv("VOLUME_ORDER"))
+	if err != nil {
+		return fmt.Errorf("unable to parse VOLUME_ORDER int: %s", err)
+	}
 
 	for key, val := range r.Options {
 		switch key {
@@ -42,13 +46,12 @@ func (d *rbdDriver) Create(r *volume.CreateRequest) error {
 			mkfsOptions = val
 
 		case "pool":
-		    // ignored ... backward compatibility
+			// ignored ... backward compatibility
 
 		default:
 			return fmt.Errorf("unknown option %q", val)
 		}
 	}
-
 
 	err = d.Connect()
 	if err != nil {
@@ -63,23 +66,21 @@ func (d *rbdDriver) Create(r *volume.CreateRequest) error {
 
 	if exists {
 		return fmt.Errorf("volume-rbd Name=%s Request=Create Message=skipping image create: ceph rbd image exists.", r.Name)
-    }
+	}
 
-    err = d.CreateRbdImage(r.Name, size, order, fstype, mkfsOptions)
-    if err != nil {
-        return fmt.Errorf("volume-rbd Name=%s Request=Create Message=unable to create ceph rbd image: %s", r.Name, err)
-    }
+	err = d.CreateRbdImage(r.Name, size, order, fstype, mkfsOptions)
+	if err != nil {
+		return fmt.Errorf("volume-rbd Name=%s Request=Create Message=unable to create ceph rbd image: %s", r.Name, err)
+	}
 
 	return nil
 }
-
 
 func (d *rbdDriver) List() (*volume.ListResponse, error) {
 	logrus.Infof("volume-rbd Request=List")
 
 	d.Lock()
 	defer d.Unlock()
-
 
 	err := d.Connect()
 	if err != nil {
@@ -99,7 +100,6 @@ func (d *rbdDriver) List() (*volume.ListResponse, error) {
 
 	return &volume.ListResponse{Volumes: vols}, nil
 }
-
 
 func (d *rbdDriver) Get(r *volume.GetRequest) (*volume.GetResponse, error) {
 	logrus.Infof("volume-rbd Name=%s Request=Get", r.Name)
@@ -125,7 +125,6 @@ func (d *rbdDriver) Get(r *volume.GetRequest) (*volume.GetResponse, error) {
 	return &volume.GetResponse{Volume: &volume.Volume{Name: r.Name, Mountpoint: d.GetMountPointPath(r.Name)}}, nil
 }
 
-
 func (d *rbdDriver) Remove(r *volume.RemoveRequest) error {
 	logrus.Infof("volume-rbd Name=%s Request=Create", r.Name)
 
@@ -138,7 +137,6 @@ func (d *rbdDriver) Remove(r *volume.RemoveRequest) error {
 	}
 	defer d.Shutdown()
 
-
 	err, exists := d.RbdImageExists(r.Name)
 	if err != nil {
 		return fmt.Errorf("volume-rbd Name=%s Request=Remove Message=unable to check if rbd image exists: %s", r.Name, err)
@@ -146,20 +144,19 @@ func (d *rbdDriver) Remove(r *volume.RemoveRequest) error {
 
 	if exists {
 
-        err = d.FreeUpRbdImage(r.Name)
-        if err != nil {
-            return fmt.Errorf("volume-rbd Name=%s Request=Remove Message=unable to free up rbd image: %s", r.Name, err)
-        }
+		err = d.FreeUpRbdImage(r.Name)
+		if err != nil {
+			return fmt.Errorf("volume-rbd Name=%s Request=Remove Message=unable to free up rbd image: %s", r.Name, err)
+		}
 
-        err = d.RemoveRbdImageWithRetries(r.Name)
-        if err != nil {
-            return fmt.Errorf("volume-rbd Name=%s Request=Remove Message=unable to remove rbd image: %s", r.Name, err)
-        }
+		err = d.RemoveRbdImageWithRetries(r.Name)
+		if err != nil {
+			return fmt.Errorf("volume-rbd Name=%s Request=Remove Message=unable to remove rbd image: %s", r.Name, err)
+		}
 	}
 
 	return nil
 }
-
 
 func (d *rbdDriver) Path(r *volume.PathRequest) (*volume.PathResponse, error) {
 	logrus.Infof("volume-rbd Name=%s Request=Path", r.Name)
@@ -185,7 +182,6 @@ func (d *rbdDriver) Path(r *volume.PathRequest) (*volume.PathResponse, error) {
 	return &volume.PathResponse{Mountpoint: d.GetMountPointPath(r.Name)}, nil
 }
 
-
 func (d *rbdDriver) Mount(r *volume.MountRequest) (*volume.MountResponse, error) {
 	logrus.Infof("volume-rbd Name=%s Request=Mount", r.Name)
 
@@ -198,7 +194,6 @@ func (d *rbdDriver) Mount(r *volume.MountRequest) (*volume.MountResponse, error)
 		return &volume.MountResponse{}, fmt.Errorf("volume-rbd Name=%s Request=Mount Message=volume state not found", r.Name)
 	}
 
-
 	err, mountpoint := d.MountRbdImage(r.Name)
 	if err != nil {
 		return &volume.MountResponse{}, fmt.Errorf("volume-rbd Name=%s Request=Mount Message= %s", r.Name, err)
@@ -207,13 +202,11 @@ func (d *rbdDriver) Mount(r *volume.MountRequest) (*volume.MountResponse, error)
 	return &volume.MountResponse{Mountpoint: mountpoint}, nil
 }
 
-
 func (d *rbdDriver) Unmount(r *volume.UnmountRequest) error {
 	logrus.Infof("volume-rbd Name=%s Request=Unmount", r.Name)
 
 	d.Lock()
 	defer d.Unlock()
-
 
 	err := d.FreeUpRbdImage(r.Name)
 	if err != nil {
@@ -222,7 +215,6 @@ func (d *rbdDriver) Unmount(r *volume.UnmountRequest) error {
 
 	return nil
 }
-
 
 func (d *rbdDriver) Capabilities() *volume.CapabilitiesResponse {
 	logrus.Infof("volume-rbd Request=Capabilities")
@@ -233,4 +225,3 @@ func (d *rbdDriver) Capabilities() *volume.CapabilitiesResponse {
 		},
 	}
 }
-
