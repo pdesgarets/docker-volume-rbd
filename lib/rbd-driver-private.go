@@ -51,7 +51,18 @@ func (d *rbdDriver) mountImage(imageName string, mountOptions string) error {
 
 	volumeMountMode := os.Getenv("VOLUME_MOUNT_MODE")
 	if volumeMountMode != "" {
+		logrus.Debugf("volume-rbd Name=%s Message=chmod %s to %s %s", imageName, mountpoint, volumeMountMode, device)
 		_, err = shWithDefaultTimeout("chmod", volumeMountMode, mountpoint)
+	} else {
+		logrus.Debugf("volume-rbd Name=%s Message=no chmod for %s", imageName, device)
+	}
+
+	volumeMountDefaultACL := os.Getenv("VOLUME_MOUNT_DEFAULT_ACL")
+	if volumeMountDefaultACL != "" {
+		logrus.Debugf("volume-rbd Name=%s Message=setfacl %s to %s %s", imageName, mountpoint, volumeMountDefaultACL, device)
+		_, err = shWithDefaultTimeout("setfacl", "-dm", volumeMountDefaultACL, mountpoint)
+	} else {
+		logrus.Debugf("volume-rbd Name=%s Message=no ACL for %s", imageName, device)
 	}
 
 	return err

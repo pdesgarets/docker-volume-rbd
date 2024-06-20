@@ -43,7 +43,7 @@ FROM base
 RUN apt-get update && apt-get install -yq \
         ceph-common \
         xfsprogs \
-        kmod vim \
+        kmod vim acl \
     && mkdir -p /run/docker/plugins /mnt/state /mnt/volumes /etc/ceph \
     && rm -rf /var/lib/apt/lists/*
 

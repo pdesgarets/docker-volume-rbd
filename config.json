@@ -98,6 +98,14 @@
         "value"
       ],
       "value": ""
+    },
+    {
+      "name": "VOLUME_MOUNT_DEFAULT_ACL",
+      "Description": "Used as default mode for setfacl. Unused if empty",
+      "settable": [
+        "value"
+      ],
+      "value": ""
     }
   ],
   "interface": {
